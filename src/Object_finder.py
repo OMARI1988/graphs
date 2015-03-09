@@ -57,8 +57,8 @@ if __name__ == '__main__':
 	f.close()
 	cv2.destroyAllWindows()
 
-    pkgdir = roslib.packages.get_pkg_dir("opencv2")
-    haarfile = os.path.join(pkgdir, "opencv/share/opencv/haarcascades/haarcascade_frontalface_alt.xml")
+    #pkgdir = roslib.packages.get_pkg_dir("opencv2")
+    #haarfile = os.path.join(pkgdir, "opencv/share/opencv/haarcascades/haarcascade_frontalface_alt.xml")
     br = CvBridge()	# Create a black image, a window
 
 #--------------------------------------------------------------------------------------#

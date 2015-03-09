@@ -4,7 +4,7 @@
 import roslib
 roslib.load_manifest('graphs')
 import sys
-import os
+import inspect, os
 from optparse import OptionParser
 import rospy
 import sensor_msgs.msg

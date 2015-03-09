@@ -11,9 +11,8 @@ from cv_bridge import CvBridge
 import cv
 import cv2
 import numpy as np
-import scipy.ndimage.morphology as morphology
 
-from qsr.msg import Objects
+#from qsr.msg import Objects
 
 global x,y,z,rgb_flag,OBJ
 
@@ -26,8 +25,8 @@ if __name__ == '__main__':
     def nothing(x):
 	    pass
 
-    pkgdir = roslib.packages.get_pkg_dir("opencv2")
-    haarfile = os.path.join(pkgdir, "opencv/share/opencv/haarcascades/haarcascade_frontalface_alt.xml")
+    #pkgdir = roslib.packages.get_pkg_dir("opencv2")
+    #haarfile = os.path.join(pkgdir, "opencv/share/opencv/haarcascades/haarcascade_frontalface_alt.xml")
     br = CvBridge()	# Create a black image, a window
 
 #--------------------------------------------------------------------------------------#
@@ -42,10 +41,6 @@ if __name__ == '__main__':
     	# Convert BGR to HSV
     	hsv = cv2.cvtColor(simg, cv2.COLOR_BGR2HSV)
     	hsv2 = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-	#1
-	
-    	#lower_blue = np.array([8,144,138])
-    	#upper_blue = np.array([21,255,237])
 
 	for i in range(1,len(OBJ)+1):
     		# Threshold the HSV image to get only orange colors
@@ -98,7 +93,6 @@ if __name__ == '__main__':
 #--------------------------------------------------------------------------------------#
     def talker():
 	global x,y,z,OBJ
-    	pub = rospy.Publisher('Objects_position', Objects)
     	r = rospy.Rate(25) # 10hz
        	fx = 525.0  # focal length x
 	fy = 525.0  # focal length y
@@ -108,8 +102,6 @@ if __name__ == '__main__':
     	while not rospy.is_shutdown():
 		x_world = (x - cx) * z / fx
 		y_world = (y - cy) * z / fy
-		#print np.float64(x_world),np.float64(y_world),np.float64(z)
-        	pub.publish(x_world,y_world,z)
         	r.sleep()
 
 #--------------------------------------------------------------------------------------#
@@ -130,10 +122,10 @@ if __name__ == '__main__':
 
     rospy.init_node('rosColordetect')
     image_topic = rospy.resolve_name("/cameras/right_hand_camera/image") 
-    depth_topic = rospy.resolve_name("/camera/depth_registered/image_raw")      
+    #depth_topic = rospy.resolve_name("/camera/depth_registered/image_raw")      
 
     rospy.Subscriber(image_topic, sensor_msgs.msg.Image, detect_and_draw)
-    rospy.Subscriber(depth_topic, sensor_msgs.msg.Image, depth_calculation)
+    #rospy.Subscriber(depth_topic, sensor_msgs.msg.Image, depth_calculation)
     print('Object tracker running...  '+str(len(OBJ))+' objects found')
     talker()
 
