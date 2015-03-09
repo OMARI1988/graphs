@@ -1,0 +1,156 @@
+#! /usr/bin/env python2.7
+# -*- coding: utf-8 -*-
+
+# this code will read 16 videos and generate the arff file for weka 
+
+import os, sys
+from commands import *  
+
+from mayavi.mlab import *
+from mayavi import mlab
+import time
+import tf
+
+from qsr.msg import Skeleton
+
+
+from matplotlib.pyplot import figure, show
+from matplotlib.patches import Ellipse
+import numpy as np
+
+from scipy.fftpack import rfft, irfft, fftfreq
+
+
+def filter_signal(signal, freq, time):
+
+    W = fftfreq(signal.size, time[1]-time[0])
+    f_signal = rfft(signal)
+   
+    cut_f_signal = f_signal.copy()
+    cut_f_signal[(W>freq)] = 0
+    return irfft(cut_f_signal)
+
+
+def display_3D_skeleton(skeleton_data_dir, skeleton_file):
+    
+    TOTAL_JOINTS = 15
+    joints_enum = {1:'HEAD',
+                   2:'NECK',
+                   3:'TORSO',
+                   4:'LEFT_SHOULDER',
+                   5:'LEFT_ELBOW',
+                   6:'RIGHT_SHOULDER',
+                   7:'RIGHT_ELBOW',
+                   8:'LEFT_HIP',
+                   9:'LEFT_KNEE',
+                  10:'RIGHT_HIP',
+                  11:'RIGHT_KNEE',
+                  12:'LEFT_HAND',
+                  13:'RIGHT_HAND',
+                  14:'LEFT_FOOT',
+                  15:'RIGHT_FOOT',
+                 }  
+    joints3D = {}
+    frame_counter = 1
+    xf = np.empty(shape=(2000, 15), dtype=float)
+    yf = np.empty(shape=(2000, 15), dtype=float)
+    zf = np.empty(shape=(2000, 15), dtype=float)
+    yaw = np.empty(shape=(2000), dtype=float)
+    
+    print 'Reading skeleton data ...'
+    
+    # Get skeleton data
+    skeleton_file_full_path = os.path.join(skeleton_data_dir, skeleton_file)
+    skeleton_file_pointer = open(skeleton_file_full_path)
+    for line in skeleton_file_pointer:
+        if line == 'END':
+            break
+        line = line.strip(',\n')
+        fields = line.split(',')
+        fields = map(float, fields)
+        frame = fields[0]
+        joints3D[frame] = {}
+        position = 1
+        for i in range(1, TOTAL_JOINTS+1):
+            joints3D[frame][i] = {}
+            # The last value in the tuple is the confidence
+            if i <= 11:
+                # The last four joints have no orientation
+                joints3D[frame][i]['orientation'] = tuple(fields[position:position+10])
+                position += 10
+		
+		if i==3:
+	    		torso_ori = joints3D[frame][3]['orientation']
+	    		euler = tf.transformations.euler_from_quaternion(torso_ori)
+	    		roll = euler[0]
+	    		pitch = euler[1]
+	    		yaw[frame] = euler[2]
+
+            joints3D[frame][i]['position'] = tuple(fields[position:position+4])
+            (x,y,z,c) = joints3D[frame][i]['position']
+
+
+    	    xf[frame,i-1] = x
+    	    yf[frame,i-1] = y
+    	    zf[frame,i-1] = z
+            position += 4	
+	
+	frame_counter += 1
+
+    xf = xf[0:frame_counter-1,:]
+    yf = yf[0:frame_counter-1,:]
+    zf = zf[0:frame_counter-1,:]
+    yaw = yaw[0:frame_counter-1]
+
+    # Filtering
+    filtered_signal_x = np.empty(shape=(frame_counter-1, 15), dtype=float)
+    filtered_signal_y = np.empty(shape=(frame_counter-1, 15), dtype=float)
+    filtered_signal_z = np.empty(shape=(frame_counter-1, 15), dtype=float)
+    filtered_signal_yaw = np.empty(shape=(frame_counter-1), dtype=float)
+    time   = np.linspace(0,60,frame_counter-1)
+   
+    for i in range(15):
+	filtered_signal_x[:,i] = filter_signal(xf[:,i],1.1,time)
+	filtered_signal_y[:,i] = filter_signal(yf[:,i],1.1,time)
+	filtered_signal_z[:,i] = filter_signal(zf[:,i],1.1,time)
+
+    filtered_signal_yaw[:] = filter_signal(yaw[:],1.1,time)
+    # calculating the structure
+    structure_x = np.empty(shape=(15, 15, frame_counter-1), dtype=float)
+    structure_y = np.empty(shape=(15, 15, frame_counter-1), dtype=float)
+    structure_z = np.empty(shape=(15, 15, frame_counter-1), dtype=float)
+
+    for j in range(15):
+	for k in range(15): 
+	    structure_x[j,k,:] = filtered_signal_x[:,j] - filtered_signal_x[:,k]	
+	    structure_y[j,k,:] = filtered_signal_y[:,j] - filtered_signal_y[:,k]	
+	    structure_z[j,k,:] = filtered_signal_z[:,j] - filtered_signal_z[:,k]
+
+
+    distance = np.sqrt(structure_x**2 + structure_y**2 + structure_z**2)
+
+    return [filtered_signal_x,filtered_signal_y,filtered_signal_z]
+
+#-------------------------------------------------------------------------------------#
+if __name__ == '__main__':
+
+    # Drinking Water
+    print 'Reading data for drinking water video'
+    #DIS1_D,yaw = display_3D_skeleton('/home/omari/Desktop/CAD-60/data1', '0512173312.txt')
+    x,y,z = display_3D_skeleton('/home/omari/Desktop/CAD-60/data1', '0512173312.txt')
+
+
+    rospy.init_node('CAD60')
+    pub = rospy.Publisher('CAD60', Skeleton)
+    r = rospy.Rate(25) # 10hz
+    frame_number = 0
+    while not rospy.is_shutdown():						# QSR generation	
+
+	if frame_number<len(x(:,0)):
+		pub.publish(x[frame_number,:],y[frame_number,:],z[frame_number,:])
+	else:
+		print 'done'
+
+        r.sleep()
+	
+        

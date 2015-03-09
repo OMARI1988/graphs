@@ -1,0 +1,5 @@
+yellow far blue,obj0,spa2,obj2
+yellow near blue,obj0,spa1,obj2
+green near blue,obj0,spa1,obj1
+green touch blue,obj0,spa0,obj1
+END
